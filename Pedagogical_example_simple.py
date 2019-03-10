@@ -20,6 +20,7 @@ from tqdm import tqdm
 # In[64]:
 
 
+# Utilities
 def sample_mixture(sample_M1, sample_M2, M1_to_M2_ratio):
     """Function sampel from the mixture under models M1 and M2 according to the provided ratio.
     
@@ -163,6 +164,7 @@ def batch_to_ndarray(file):
 # In[99]:
 
 
+#######################################################################################################
 ####### This code reproduces Figure 1 and Table 1 in "Bayesian averaging of computer models with domain
 ####### discrepancies:  towards a nuclear physics perspective" from already precomputed results
 
@@ -217,7 +219,8 @@ plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
 # In[47]:
 
 
-# A pedagogical example simple version with no model discrepancies
+#####################################################################################
+# A pedagogical example simple version with no domain correction computation code
 np.random.seed(123)
 #Data
 y = np.array([0,0,0,0,0,0,0,0,0,0])
@@ -272,7 +275,7 @@ with pm.Model() as gp_toy_model:
 
 
 
-# MCM sampling
+# MCMC sampling
 with gp_toy_model:
     #trace = pm.backends.ndarray.load_trace("pedag_simple_epsilon_" + str(epsilon))
     trace = pm.sample(n_sample, tune = 20000, njobs=1)
