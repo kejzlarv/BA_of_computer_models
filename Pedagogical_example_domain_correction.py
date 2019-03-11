@@ -132,7 +132,7 @@ def correction_factor(x_diff, y_diff, x_intersection, y_intersection, n_mc = 400
     
     log_likelihood = np.empty(0)
     mc_integral = np.empty(n_mc)    
-    logp = pymc3_model.logp
+    logp = y_gp.logp
 
     for i in tqdm(range(n_mc), desc = "Log likelihood eval"):
         log_likelihood = np.append(log_likelihood, logp(trace_priors[i]))
@@ -470,7 +470,7 @@ with pm.Model() as priors_model:
 
 log_likelihood = np.empty(0)
 mc_integral = np.empty(n_mc)
-logp = gp_toy_model.logp
+logp = y_gp.logp
 
 for i in tqdm(range(n_mc), desc = "Log likelihood eval"):
     log_likelihood = np.append(log_likelihood, logp(trace_priors[i], transform = None))
