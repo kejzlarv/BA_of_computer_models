@@ -4,8 +4,8 @@ This repository contains complete Python code to reproduce the examples in "Baye
 
 ## The source code for examples:
 1. [A Pedagogical Example - no domanin correction](Pedagogical_example_simple.py)
-2. [A Pedagogical Exampl - with domain correction](Pedagogical_example_domain_correction.py)
-3. [Averaging nuclear (mass) models]()(Application_averaging_of_nuclear_mass_models.py)
+2. [A Pedagogical Example - with domain correction](Pedagogical_example_domain_correction.py)
+3. [Averaging nuclear (mass) models](Application_averaging_of_nuclear_mass_models.py)
 4. [Averaging nuclear mass emulators in the Ca region](Application_nuclear_mass_emulators_CA_region.py)
 
 ## Notes
