@@ -10,7 +10,7 @@ This repository contains complete Python code to reproduce the examples in "Baye
 
 ## Notes
 - Each of the examples above is self sufficient.
-- The **.py** files start with list of packages to be loaded, followed by function definitions.
+- The **.py** files start with a list of packages to be loaded, followed by function definitions.
 - The main body of each of the examples starts with section that loads the already computed results and reproduces charts and tables in the paper
 - The main body that contains all the analysis is denoted in each of the example source files.
-- All the files in the repository that are not **.py** files are either datasets or pre-computed results
+- All the files in the repository that are not **.py** files are either datasets or pre-computed results.
