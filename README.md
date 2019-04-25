@@ -1,6 +1,6 @@
-# Bayesian averaging of computer models with domainiscrepancies: towards a nuclear physics perspective - Instruction to supplementary code
+# Bayesian averaging of computer models with domain discrepancies: a nuclear physics perspective - Instruction to supplementary code
 
-This repository contains complete Python code to reproduce the examples in "Bayesian averaging of computer models with domainiscrepancies: towards a nuclear physics perspective."
+This repository contains complete Python code to reproduce the examples in "Bayesian averaging of computer models with domain discrepancies: a nuclear physics perspective."
 
 ## The source code for examples:
 1. [A Pedagogical Example - no domanin correction](Pedagogical_example_simple.py)
