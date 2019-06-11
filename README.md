@@ -7,7 +7,7 @@ This repository contains complete Python code to reproduce the examples in "Baye
 2. [A Pedagogical Example - with domain correction](Pedagogical_example_domain_correction.py)
 3. [Averaging nuclear (mass) models](Application_averaging_of_nuclear_mass_models.py)
 4. [Averaging nuclear mass emulators in the Ca region](Application_nuclear_mass_emulators_CA_region.py)
-5. [WS potential](WS_potential.ipynb)
+5. [WS potential](WS_potential.py)
 
 ## Notes
 - Each of the examples above is self sufficient.
