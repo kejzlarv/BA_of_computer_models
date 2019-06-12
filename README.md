@@ -3,7 +3,7 @@
 This repository contains complete Python code to reproduce the examples in "Bayesian averaging of computer models with domain discrepancies: a nuclear physics perspective."
 
 ## The source code for examples:
-1. [Domain-Corrected Averaging- A Pedagogical Example](Pedagogical_example_domain_correction.py)
+1. [Domain-Corrected Averaging - A Pedagogical Example](Pedagogical_example_domain_correction.py)
 2. [Averaging nuclear mass emulators in the Ca region](Application_nuclear_mass_emulators_CA_region.py)
 3. [Averaging Mean-Field Energy Densities](WS_potential.py)
 
