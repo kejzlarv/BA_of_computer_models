@@ -5,7 +5,7 @@ This repository contains complete Python code to reproduce the examples in "Baye
 ## The source code for examples:
 1. [Domain-Corrected Averaging - A Pedagogical Example](Pedagogical_example_domain_correction.py)
 2. [Averaging nuclear mass emulators in the Ca region](Application_nuclear_mass_emulators_CA_region.py)
-3. [Averaging Mean-Field Energy Densities](WS_potential.py)
+3. [Averaging Mean-Field Proton Potentials](WS_potential.py)
 
 ## Notes
 - Each of the examples above is self sufficient.
