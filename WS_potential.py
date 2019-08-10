@@ -32,7 +32,8 @@ def WS_potential(r, V0 = 50, a = 0.5, r0 = 1.25, A = 64):
     return V_r
 
 def C_potential(r, V0 = 50):
-    """Function return value of C potential for given r"""
+    """Function return value of C potential for given r
+    NOTE: For this parametrization V0 = VC * Z"""
     return - V0 / r
 
 def exp_data(r, sd, V0 = 50, a = 0.5, r0 = 1.25, A = 64):
@@ -192,10 +193,12 @@ np.random.seed(0)
 # eps is the sd of experimental error
 # A is the atomic mass number of the nuclei under consideration
 
-n_exp = 84
-r_range = [0.1, 10]
+n_exp = 210
+#r_range = [0.1, 10]
 eps = 1 # Experimental eror
-A = 96
+A = 250
+R = 1.25 * A ** (1/3)
+r_range = [R, 10]
 ############
 
 r = r_exp(n_exp = n_exp, r_range = r_range, domain_type = 1)
@@ -216,20 +219,24 @@ y_test = y_exp[test_sample]
 # ### WS Model - Evidence 
 
 
+
 np.random.seed(0)
 priors = {"sigma": [1, 30]}
-n_mc = 20000
+n_mc = 150000
 pm_model_WS, obs_WS, logp_WS = exp_model(r_train, y_train, priors, model_type = "WS", A = A)
 mc_integral_WS = evidence_int(priors, pm_model_WS, obs_WS, logp_WS, n_mc)
 
 
 # ### C Model - Evidence
 
+
+
 np.random.seed(0)
 priors = {"sigma": [1, 30]}
-n_mc = 20000
+n_mc = 150000
 pm_model_C, obs_C, logp_C = exp_model(r_train, y_train, priors, model_type = "C", A = A)
 mc_integral_C = evidence_int(priors, pm_model_C, obs_C, logp_C, n_mc)
+
 
 
 print("P(M2|D) = " + str(mc_integral_C[-1] / (mc_integral_WS[-1] + mc_integral_C[-1])))
@@ -245,6 +252,8 @@ M1_M2_ratio = mc_integral_WS[-1] / mc_integral_C[-1]
 
 # #### WS Model - Prediction
 
+
+
 np.random.seed(0)
 pm_model_WS, obs_WS, logp_WS = exp_model(r, y_exp, priors, model_type = "WS", A = A)
 predictions_WS, trace_WS = sample_predictions(r_new = r_new, pm_model = pm_model_WS, obs = obs_WS, model_type ="WS",
@@ -253,6 +262,8 @@ predictions_WS, trace_WS = sample_predictions(r_new = r_new, pm_model = pm_model
 
 # #### C Model - Prediction
 
+
+
 np.random.seed(0)
 pm_model_C, obs_C, logp_C = exp_model(r, y_exp, priors, model_type = "C", A = A)
 predictions_C, trace_C = sample_predictions(r_new = r_new, pm_model = pm_model_C, obs = obs_C, model_type ="C",
@@ -260,15 +271,20 @@ predictions_C, trace_C = sample_predictions(r_new = r_new, pm_model = pm_model_C
 
 
 # #### BMA - Predictions
+
 np.random.seed(0)
-predictions_BMA = sample_mixture(predictions_C, predictions_WS, M1_M2_ratio)
+predictions_BMA = sample_mixture(predictions_WS, predictions_C, M1_M2_ratio)
 
 
 print("RMSE BMA:" + str(np.sqrt(mse(y_exp[test_sample], predictions_BMA[test_sample,:]))))
 print("RMSE W-S:" + str(np.sqrt(mse(y_exp[test_sample], predictions_WS[test_sample,:]))))
 print("RMSE C:" + str(np.sqrt(mse(y_exp[test_sample], predictions_C[test_sample,:]))))
+print("r^2: " + str(1 - mse(y_exp[test_sample], predictions_BMA[test_sample,:]) / np.min([mse(y_exp[test_sample], predictions_WS[test_sample,:]), mse(y_exp[test_sample], predictions_C[test_sample,:])])))
+
 
 # r^2 for C potential
+
+
 print("r^2: " + str(1 - mse(y_exp[test_sample], predictions_BMA[test_sample,:]) / np.min([mse(y_exp[test_sample], predictions_C[test_sample,:]), mse(y_exp[test_sample], predictions_C[test_sample,:])])))
 
 
@@ -277,7 +293,10 @@ print("r^2: " + str(1 - mse(y_exp[test_sample], predictions_BMA[test_sample,:]) 
 
 print("r^2: " + str(1 - mse(y_exp[test_sample], predictions_BMA[test_sample,:]) / np.min([mse(y_exp[test_sample], predictions_WS[test_sample,:]), mse(y_exp[test_sample], predictions_WS[test_sample,:])])))
 
+
+
 # ECP
+
 
 alpha_array = np.linspace(0.05, 1, 20) # Array of alphas
 BMA_ECP = {}
@@ -291,18 +310,15 @@ for alpha in tqdm(alpha_array , desc = "ECP for alpha"):
     C_ECP[str(alpha)] = ECP(predictions_C[test_sample,:], truth, alpha, ci_type)
 
 
-
 plt.figure(figsize=(10,5))
+plt.rcParams.update({'font.size': 19})
 x = 1 - alpha_array
 plt.plot(x,x, 'r--' , linewidth = 1, label = 'Reference')
-plt.plot(x,C_ECP.values(), marker = 'o', label = r'$\mathcal{M}_2$', linewidth = 1, markersize=5)
-plt.plot(x,WS_ECP.values(), marker = '^', label = r'$\mathcal{M}_1$', linewidth = 1, markersize=5)
+plt.plot(x,C_ECP.values(), marker = 'o', label = r'$\mathcal{M}_1$', linewidth = 1, markersize=5)
+plt.plot(x,WS_ECP.values(), marker = '^', label = r'$\mathcal{M}_2$', linewidth = 1, markersize=5)
 plt.plot(x,BMA_ECP.values(), c = 'k', marker = '*', linewidth = 1, markersize=5, label = r'$\mathcal{M}_{BMA}$')
 plt.ylabel('Empirical coverage')
 plt.xlabel('Credibility level')
 plt.legend()
-plt.savefig('ECP_WS_et_' + str(A) + "_nexp_" + str(n_exp) +".pdf", bbox_inches='tight',dpi = 300)
+plt.savefig('ECP_WS_m_' + str(A) + "_nexp_" + str(n_exp) +".pdf", bbox_inches='tight',dpi = 300)
 plt.show()
-
-        
-
