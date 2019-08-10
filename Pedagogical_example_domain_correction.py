@@ -1,7 +1,5 @@
-
+#!/usr/bin/env python
 # coding: utf-8
-
-# In[59]:
 
 
 # Loading the neccesary packages
@@ -19,8 +17,9 @@ import os
 import sys
 from tqdm import tqdm
 
+import matplotlib as plt_base
+plt_base.rcParams.update({'errorbar.capsize': 3}) # Seting caps on error bars
 
-# In[56]:
 
 
 # Utilities
@@ -137,7 +136,7 @@ def correction_factor(x_diff, y_diff, x_intersection, y_intersection, n_mc = 400
     for i in tqdm(range(n_mc), desc = "Log likelihood eval"):
         log_likelihood = np.append(log_likelihood, logp(trace_priors[i]))
     
-    for i in range(n_mc):
+    for i in tqdm(range(n_mc), desc = "Integral calc"):
         m = max(log_likelihood[:(i + 1)])
         mc_integral[i] = (np.exp(m) * np.sum(np.exp(log_likelihood[:(i + 1)] - m))) / (i + 1)   
     
@@ -252,11 +251,9 @@ def batch_to_ndarray(file):
     return posterior_sample
 
 
-# In[65]:
 
-
-####### This code reproduces Figure 2 and Table 2 in "Bayesian averaging of computer models with domain
-####### discrepancies:  towards a nuclear physics perspective" from already precomputed results
+####### This code reproduces Figure 2 and Table 4 in "Bayesian averaging of computer models with domain
+####### discrepancies: a nuclear physics perspective" from already precomputed results - asymetric scenario
 
 np.random.seed(123)
 # Data
@@ -275,30 +272,37 @@ corr_m2_name = "corr_factor_pedag_domain_c_1_eps_-0.5_dataset_R_shift_"
 pred_m1_name = "pred_pedag_domain_c_1_eps_0.5_dataset_L_shift_"
 pred_m2_name = "pred_pedag_domain_c_1_eps_-0.5_dataset_R_shift_"
 
+folder_location = "pred_pedag_antisymmetric/"
+
 #Dictionaries for posterior samples and numerical 
 posterior_samples = {}
 posterior_summary = {}
-shift_max = 4
+shift_max = 3
 range_post = np.array(range(10)) + 4
+#range_post = np.array(range(10))
 #range_post = np.array(range(18))
 for i in range(shift_max):
     # Loading neccessary files
-    m1_e = np.load(evidence_m1_name + str(i) + ".npy")
-    m2_e = np.load(evidence_m2_name + str(i) + ".npy")
-    c1 = np.load(corr_m1_name + str(i) + ".npy")
-    c2 = np.load(corr_m2_name + str(i) + ".npy")
-    prediction_sample_1 = np.array(batch_to_ndarray(pred_m1_name + str(i)))[:,15000:]
-    prediction_sample_2 = np.array(batch_to_ndarray(pred_m2_name + str(i)))[:,15000:]
+    m1_e = np.load(folder_location + evidence_m1_name + str(i) + ".npy")
+    m2_e = np.load(folder_location + evidence_m2_name + str(i) + ".npy")
+    c1 = np.load(folder_location + corr_m1_name + str(i) + ".npy")
+    c2 = np.load(folder_location + corr_m2_name + str(i) + ".npy")
+    prediction_sample_1 = np.array(batch_to_ndarray(folder_location + pred_m1_name + str(i)))[:,5000:]
+    prediction_sample_2 = np.array(batch_to_ndarray(folder_location + pred_m2_name + str(i)))[:,5000:]
     
     ratio = m1_e[-1] * c2[-1]/(m2_e[-1]*c1[-1])
+    ratio_simple = m1_e[-1] * 1/(m2_e[-1]*1)
     posterior_BMA = sample_mixture(prediction_sample_1, prediction_sample_2, ratio)
+    posterior_BMA_simple = sample_mixture(prediction_sample_1, prediction_sample_2, ratio_simple)
     
     prediction_sample_1 = prediction_sample_1[range_post,:]
     prediction_sample_2 = prediction_sample_2[range_post,:]
     posterior_BMA = posterior_BMA[range_post,:]
+    posterior_BMA_simple = posterior_BMA_simple[range_post,:]
     mse_1 = mse(y[range_post], prediction_sample_1)
     mse_2 = mse(y[range_post], prediction_sample_2)
     mse_bma = mse(y[range_post], posterior_BMA)
+    mse_bma_simple = mse(y[range_post], posterior_BMA_simple)
     
     # Printing results
     print("#### shift: " + str(i))
@@ -309,50 +313,171 @@ for i in range(shift_max):
     print("correction factor M2 = " + str(c1[-1]))
     print("root PMSE(M1) = " + str(np.round(np.sqrt(mse_1), decimals=2)))
     print("root PMSE(M2) = " + str(np.round(np.sqrt(mse_2), decimals=2)))
-    print("root PMSE(BMA) = " + str(np.round(np.sqrt(mse_bma), decimals=2)))
+    print("root PMSE(BMA)_Q0 = " + str(np.round(np.sqrt(mse_bma_simple), decimals=2)))
+    print("root PMSE(BMA)_Q = " + str(np.round(np.sqrt(mse_bma), decimals=2)))
     print("r^2 M1: " + str(np.round(1 - mse_bma / mse_1, decimals= 3)))
     print("r^2 M2: " + str(np.round(1 - mse_bma / mse_2, decimals= 3)))
     
     
-    posterior_samples["shift_" + str(i)] = {"m1":prediction_sample_1, "m2":prediction_sample_2, "bma":posterior_BMA}
+    posterior_samples["shift_" + str(i)] = {"m1":prediction_sample_1, "m2":prediction_sample_2, "bma":posterior_BMA,
+                                           "bma_simple": posterior_BMA_simple}
     posterior_summary["shift_" + str(i)] = {"mse1":mse_1, "mse2":mse_2, "mseBMA":mse_bma, "ratio":ratio,
                                            "m1e":m1_e[-1], "m2e":m2_e[-1], "c1":c1[-1], "c2":c2[-1] }
     
-d_shared = np.array([0.2,0.4,0.6,0.8])
+d_shared = np.array([0.3,0.5,0.7])
+plt.rcParams.update({'font.size': 14})
 thickness_c = 0.8
 thickness_l = 0.9
-grid = plt.GridSpec(2, 2, wspace=0.25, hspace=0.2)
-fig = plt.figure()
-ax = []
-shift_max = 4
+fig, ax = plt.subplots(shift_max, 1)
+fig.tight_layout()
+shift_max = 3
 for i in range(shift_max):
-    row = (i // 2)
-    col = i % 2
-    ax.append(fig.add_subplot(grid[row,col]))
+    #row = (i // 2)
+    #col = i % 2
+    row = i
+    col = 0
+    #ax.append(fig.add_subplot(grid[row,col]))
     
     m1 = posterior_samples["shift_" + str(i)]["m1"].mean(axis= 1)
     m2 = posterior_samples["shift_" + str(i)]["m2"].mean(axis= 1)
     mbma = posterior_samples["shift_" + str(i)]["bma"].mean(axis= 1)
-    l1 = ax[-1].errorbar(x[range_post], mbma, fmt='*g', ecolor='g', capthick=thickness_c, elinewidth=thickness_l, label=r'$\mathcal{M}_{BMA}$')
-    l2 = ax[-1].errorbar(x[range_post] + 0.3, m1, fmt='^r', ecolor='r', capthick=thickness_c, elinewidth=thickness_l,label=r'$\mathcal{M}_{1}$')
-    l3 = ax[-1].errorbar(x[range_post] - 0.3, m2, fmt='.k', ecolor='black', capthick=thickness_c, elinewidth=thickness_l, label=r'$\mathcal{M}_{2}$')
-    ax[-1].plot([(x[range_post] + 0.3).flatten(), (x[range_post] - 0.3).flatten()], [y[range_post],y[range_post]], 'k-', linestyle = "--", color = "black", linewidth = thickness_l)
-    ax[-1].axes.tick_params(labelsize = 10)
-    ax[-1].text(0.5, 0.9,r'$D_{shared} = $' + str(d_shared[i]), ha='center', transform=ax[-1].transAxes)
+    mbma_simple = posterior_samples["shift_" + str(i)]["bma_simple"].mean(axis= 1)
+    m1_sd = posterior_samples["shift_" + str(i)]["m1"].std(axis= 1)
+    m2_sd = posterior_samples["shift_" + str(i)]["m2"].std(axis= 1)
+    mbma_sd = posterior_samples["shift_" + str(i)]["bma"].std(axis= 1)
+    mbma_sd_simple = posterior_samples["shift_" + str(i)]["bma_simple"].std(axis= 1)
+    
+    l0 = ax[i].errorbar(x[range_post] + 0.1, mbma_simple, yerr=mbma_sd_simple, fmt='*b', ecolor='b', capthick=thickness_c, elinewidth=thickness_l, label=r'$\mathcal{M}_{BMA(Q_0)}$')
+    l1 = ax[i].errorbar(x[range_post] - 0.1, mbma, yerr=mbma_sd, fmt='*g', ecolor='g', capthick=thickness_c, elinewidth=thickness_l, label=r'$\mathcal{M}_{BMA(Q)}$')
+    l2 = ax[i].errorbar(x[range_post] + 0.3, m1, yerr=m1_sd, fmt='^r', ecolor='r', capthick=thickness_c, elinewidth=thickness_l,label=r'$\mathcal{M}_{1}$')
+    l3 = ax[i].errorbar(x[range_post] - 0.3, m2, yerr=m2_sd, fmt='.k', ecolor='black', capthick=thickness_c, elinewidth=thickness_l, label=r'$\mathcal{M}_{2}$')
+    ax[i].plot([(x[range_post] + 0.5).flatten(), (x[range_post] - 0.5).flatten()], [y[range_post],y[range_post]], 'k-', linestyle = "--", color = "black", linewidth = thickness_l)
+    ax[i].axes.tick_params(labelsize = 12)
+    ax[i].text(0.5, 0.9,r'$D_{shared} = $' + str(d_shared[i]), ha='center', transform=ax[i].transAxes)
+    ax[i].set_xlim([-5.8, 5.8])
+
+plt.legend((l0,l1,l2,l3),(r'$\mathcal{M}_{BMA(Q_0)}$', r'$\mathcal{M}_{BMA(Q)}$', r'$\mathcal{M}_{1}$', r'$\mathcal{M}_{2}$'),loc = 'lower center', bbox_to_anchor = (0,-0.01,1,1),
+            bbox_transform = plt.gcf().transFigure, ncol=4)
+fig.text(0.03, 0.5, r'$\hat{y}^*$', va='center', rotation='vertical')
+fig.set_size_inches(7, 6)
+plt.subplots_adjust(wspace=0.1, hspace=0) 
+plt.savefig("Idealized_ratios_antisymmetric.pdf",dpi = 300,bbox_inches='tight')
 
 
-plt.legend((l1,l2,l3),(r'$\mathcal{M}_{BMA}$', r'$\mathcal{M}_{1}$', r'$\mathcal{M}_{2}$'),loc = 'lower center', bbox_to_anchor = (0,-0,1,1),
-            bbox_transform = plt.gcf().transFigure, ncol=3)
-fig.text(0.06, 0.5, r'$\hat{y}^*$', va='center', rotation='vertical')
-fig.set_size_inches(8, 6)
-plt.savefig("Idealized_ratios.png",dpi = 200)
 
+####### This code reproduces Figure 4 and Table 7 in "Bayesian averaging of computer models with domain
+####### discrepancies: a nuclear physics perspective" from already precomputed results - symmetric scenario
 
-# In[44]:
+np.random.seed(123)
+# Data
+y = np.repeat(0,18)
+sigma_noise = 0.001
+y = y + np.random.randn(len(y)) * sigma_noise
+
+# Predictors
+x = np.array([-9,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8,9])[:,None]
+    
+#Names base
+evidence_m1_name = "evidence_pedag_domain_c_1_eps_0.5_dataset_L_shift_"
+evidence_m2_name = "evidence_pedag_domain_c_1_eps_-0.5_dataset_R_shift_"
+corr_m1_name = "corr_factor_pedag_domain_c_1_eps_0.5_dataset_L_shift_"
+corr_m2_name = "corr_factor_pedag_domain_c_1_eps_-0.5_dataset_R_shift_"
+pred_m1_name = "pred_pedag_domain_c_1_eps_0.5_dataset_L_shift_"
+pred_m2_name = "pred_pedag_domain_c_1_eps_-0.5_dataset_R_shift_"
+
+folder_location = "pred_pedag_symmetric/"
+
+#Dictionaries for posterior samples and numerical 
+posterior_samples = {}
+posterior_summary = {}
+shift_max = 4
+range_post = np.array(range(10)) + 4
+for i in range(shift_max):
+    # Loading neccessary files
+    m1_e = np.load(folder_location + evidence_m1_name + str(i) + ".npy")
+    m2_e = np.load(folder_location + evidence_m2_name + str(i) + ".npy")
+    c1 = np.load(folder_location + corr_m1_name + str(i) + ".npy")
+    c2 = np.load(folder_location + corr_m2_name + str(i) + ".npy")
+    prediction_sample_1 = np.array(batch_to_ndarray(folder_location + pred_m1_name + str(i)))[:,5000:]
+    prediction_sample_2 = np.array(batch_to_ndarray(folder_location + pred_m2_name + str(i)))[:,5000:]
+    
+    ratio = m1_e[-1] * c2[-1]/(m2_e[-1]*c1[-1])
+    ratio_simple = m1_e[-1] * 1/(m2_e[-1]*1)
+    posterior_BMA = sample_mixture(prediction_sample_1, prediction_sample_2, ratio)
+    posterior_BMA_simple = sample_mixture(prediction_sample_1, prediction_sample_2, ratio_simple)
+    
+    prediction_sample_1 = prediction_sample_1[range_post,:]
+    prediction_sample_2 = prediction_sample_2[range_post,:]
+    posterior_BMA = posterior_BMA[range_post,:]
+    posterior_BMA_simple = posterior_BMA_simple[range_post,:]
+    mse_1 = mse(y[range_post], prediction_sample_1)
+    mse_2 = mse(y[range_post], prediction_sample_2)
+    mse_bma = mse(y[range_post], posterior_BMA)
+    mse_bma_simple = mse(y[range_post], posterior_BMA_simple)
+    
+    # Printing results
+    print("#### shift: " + str(i))
+    print("Q: " + str(np.round(ratio, decimals = 2)))
+    print("evidence M1 = " + str(m1_e[-1]))
+    print("evidence M2 = " + str(m2_e[-1]))
+    print("correction factor M1 = " + str(c2[-1]))
+    print("correction factor M2 = " + str(c1[-1]))
+    print("root PMSE(M1) = " + str(np.round(np.sqrt(mse_1), decimals=2)))
+    print("root PMSE(M2) = " + str(np.round(np.sqrt(mse_2), decimals=2)))
+    print("root PMSE(BMA)_Q0 = " + str(np.round(np.sqrt(mse_bma_simple), decimals=2)))
+    print("root PMSE(BMA)_Q = " + str(np.round(np.sqrt(mse_bma), decimals=2)))
+    print("r^2 M1: " + str(np.round(1 - mse_bma / mse_1, decimals= 3)))
+    print("r^2 M2: " + str(np.round(1 - mse_bma / mse_2, decimals= 3)))
+    
+    
+    posterior_samples["shift_" + str(i)] = {"m1":prediction_sample_1, "m2":prediction_sample_2, "bma":posterior_BMA,
+                                           "bma_simple": posterior_BMA_simple}
+    posterior_summary["shift_" + str(i)] = {"mse1":mse_1, "mse2":mse_2, "mseBMA":mse_bma, "ratio":ratio,
+                                           "m1e":m1_e[-1], "m2e":m2_e[-1], "c1":c1[-1], "c2":c2[-1] }
+    
+d_shared = np.array([0.2,0.4,0.6,0.8])
+plt.rcParams.update({'font.size': 14})
+thickness_c = 0.8
+thickness_l = 0.9
+fig, ax = plt.subplots(shift_max, 1)
+fig.tight_layout()
+shift_max = 4
+for i in range(shift_max):
+    #row = (i // 2)
+    #col = i % 2
+    row = i
+    col = 0
+    #ax.append(fig.add_subplot(grid[row,col]))
+    
+    m1 = posterior_samples["shift_" + str(i)]["m1"].mean(axis= 1)
+    m2 = posterior_samples["shift_" + str(i)]["m2"].mean(axis= 1)
+    mbma = posterior_samples["shift_" + str(i)]["bma"].mean(axis= 1)
+    mbma_simple = posterior_samples["shift_" + str(i)]["bma_simple"].mean(axis= 1)
+    m1_sd = posterior_samples["shift_" + str(i)]["m1"].std(axis= 1)
+    m2_sd = posterior_samples["shift_" + str(i)]["m2"].std(axis= 1)
+    mbma_sd = posterior_samples["shift_" + str(i)]["bma"].std(axis= 1)
+    mbma_sd_simple = posterior_samples["shift_" + str(i)]["bma_simple"].std(axis= 1)
+    
+    l0 = ax[i].errorbar(x[range_post] + 0.1, mbma_simple, yerr=mbma_sd_simple, fmt='*b', ecolor='b', capthick=thickness_c, elinewidth=thickness_l, label=r'$\mathcal{M}_{BMA(Q_0)}$')
+    l1 = ax[i].errorbar(x[range_post] - 0.1, mbma, yerr=mbma_sd, fmt='*g', ecolor='g', capthick=thickness_c, elinewidth=thickness_l, label=r'$\mathcal{M}_{BMA(Q)}$')
+    l2 = ax[i].errorbar(x[range_post] + 0.3, m1, yerr=m1_sd, fmt='^r', ecolor='r', capthick=thickness_c, elinewidth=thickness_l,label=r'$\mathcal{M}_{1}$')
+    l3 = ax[i].errorbar(x[range_post] - 0.3, m2, yerr=m2_sd, fmt='.k', ecolor='black', capthick=thickness_c, elinewidth=thickness_l, label=r'$\mathcal{M}_{2}$')
+    ax[i].plot([(x[range_post] + 0.5).flatten(), (x[range_post] - 0.5).flatten()], [y[range_post],y[range_post]], 'k-', linestyle = "--", color = "black", linewidth = thickness_l)
+    ax[i].axes.tick_params(labelsize = 12)
+    ax[i].text(0.5, 0.9,r'$D_{shared} = $' + str(d_shared[i]), ha='center', transform=ax[i].transAxes)
+    ax[i].set_xlim([-5.8, 5.8])
+
+plt.legend((l0,l1,l2,l3),(r'$\mathcal{M}_{BMA(Q_0)}$', r'$\mathcal{M}_{BMA(Q)}$', r'$\mathcal{M}_{1}$', r'$\mathcal{M}_{2}$'),loc = 'lower center', bbox_to_anchor = (0,0.02,1,1),
+            bbox_transform = plt.gcf().transFigure, ncol=4)
+fig.text(-0.015, 0.5, r'$\hat{y}^*$', va='center', rotation='vertical')
+fig.set_size_inches(7, 9.5)
+plt.subplots_adjust(wspace=0.1, hspace=0) 
+plt.savefig("Idealized_ratios_symmetric.pdf",dpi = 300,bbox_inches='tight')
+
 
 
 #####################################################################################
-# A pedagogical example domain corrected version computation code
+# A pedagogical example domain corrected version computation code - symmetric scenario preset
 np.random.seed(123)
 # Data
 y = np.repeat(0,18)
@@ -399,12 +524,63 @@ epsilon = 0.5
 #prediction noise
 noise = False
     
-n_mc = 80000
+n_mc = 160000
 n_sample = 40000
 n_tune = 20000
 
 
-# In[45]:
+#####################################################################################
+# A pedagogical example domain corrected version computation code - asymmetric scenario preset
+np.random.seed(123)
+# Data
+y = np.repeat(0,18)
+sigma_noise = 0.001
+y = y + np.random.randn(len(y)) * sigma_noise
+
+# Predictors
+x = np.array([-9,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8,9])[:,None]
+
+# Shift determines the Dshared factor
+data_shift = int(sys.argv[1])
+
+l_x_train = x[(0 + int(data_shift)):(10 + int(data_shift))]
+r_x_train = x[(7 - int(data_shift)):(17 - int(data_shift))]
+x_intersection = x[(8 - int(data_shift)):(10 +int(data_shift))]
+    
+l_y_train = y[(0 + int(data_shift)):(10 + int(data_shift))]
+r_y_train = y[(7 - int(data_shift)):(17 - int(data_shift))]
+y_intersection = y[(7 - int(data_shift)):(9 + int(data_shift))]
+
+# L for dataset starting at x = -9 with 0 shif => Dshared = 0.2 (L is always related to M1 computations)
+# R for dataset starting at x = -1 with 0 shift => Dshared = 0.2 (R is always related to M2 computations)
+dataset_type = sys.argv[2]
+if dataset_type == "L":
+    x_train_a = l_x_train
+    x_train_b = r_x_train
+    y_train_a = l_y_train
+    y_train_b = r_y_train
+    x_diff = np.setdiff1d(x_train_a,x_train_b)[:,None]
+    y_diff = y[np.isin(x, x_diff).reshape(len(y))]
+elif dataset_type == "R":
+    x_train_a = r_x_train
+    x_train_b = l_x_train
+    y_train_a = r_y_train
+    y_train_b = l_y_train
+    x_diff = np.setdiff1d(x_train_a,x_train_b)[:,None]
+    y_diff = y[np.isin(x, x_diff).reshape(len(y))]
+
+#Model parameters
+c = 1
+# Epsilon = 0.5 for model 1
+# Epsilon = - 0.5 for model 2
+epsilon = float(sys.argv[3])
+#prediction noise
+noise = False
+    
+n_mc = 160000
+n_sample = 40000
+n_tune = 20000
+
 
 
 #Input for the pymc3 model
@@ -443,7 +619,6 @@ with pm.Model() as gp_toy_model:
     y_gp = gp_model.marginal_likelihood("y_", X = x_input_theta, y = y_train_a, noise = tt.sqrt(sigma_sq))
 
 
-# In[28]:
 
 
 # MCMC sampling
@@ -452,9 +627,6 @@ with gp_toy_model:
 
 name =  "pedag_domain_c_1_eps_" + str(epsilon) + "_dataset_" + dataset_type + "_shift_" + str(data_shift)
 pm.backends.ndarray.save_trace(trace, directory = name)
-
-
-# In[47]:
 
 
 # Evidence integral computaiton
@@ -482,103 +654,16 @@ for i in tqdm(range(n_mc), desc = "Integral calc"):
 np.save("evidence_" + name, mc_integral)
 
 # Sampling predictive distribution for given epsilon
-os.mkdir(os.getcwd() + "/pred_pedag_simple_epsilon_" + str(epsilon))
-post = posterior_predictions(gp_toy_model, gp_model, trace, x_input , 1, os.getcwd() + "/pred_" + name, batch_size = 500, n_core = 1, noise = noise)
 
+x_sq = x ** 2
+x_input = np.concatenate((x, x_sq), axis = 1)
+os.mkdir(os.getcwd() + "/pred_" + name)
+post = posterior_predictions(gp_toy_model, gp_model, trace, x_input, 1, os.getcwd() + "/pred_" + name, batch_size = 500, n_core = 1, noise = noise)
 
-# In[61]:
 
 
 # Correction factor computation
 np.random.seed(123)
 likelihood_eval, evidence = correction_factor(x_diff,y_diff, x_intersection, y_intersection, n_mc=160000)
-np.save("corr_factor_" + name, mc_integral)
-
-
-# In[16]:
-
-
-#Names base
-evidence_m1_name = "evidence_pedag_domain_c_1_eps_0.5_dataset_L_shift_"
-evidence_m2_name = "evidence_pedag_domain_c_1_eps_-0.5_dataset_R_shift_"
-corr_m1_name = "corr_factor_pedag_domain_c_1_eps_0.5_dataset_L_shift_"
-corr_m2_name = "corr_factor_pedag_domain_c_1_eps_-0.5_dataset_R_shift_"
-pred_m1_name = "pred_pedag_domain_c_1_eps_0.5_dataset_L_shift_"
-pred_m2_name = "pred_pedag_domain_c_1_eps_-0.5_dataset_R_shift_"
-
-#Dictionaries for posterior samples and numerical 
-posterior_samples = {}
-posterior_summary = {}
-shift_max = 4
-range_post = np.array(range(10)) + 4
-#range_post = np.array(range(18))
-for i in range(shift_max):
-    # Loading neccessary files
-    m1_e = np.load(evidence_m1_name + str(i) + ".npy")
-    m2_e = np.load(evidence_m2_name + str(i) + ".npy")
-    c1 = np.load(corr_m1_name + str(i) + ".npy")
-    c2 = np.load(corr_m2_name + str(i) + ".npy")
-    prediction_sample_1 = np.array(batch_to_ndarray(pred_m1_name + str(i)))[:,15000:]
-    prediction_sample_2 = np.array(batch_to_ndarray(pred_m2_name + str(i)))[:,15000:]
-    
-    ratio = m1_e[-1] * c2[-1]/(m2_e[-1]*c1[-1])
-    posterior_BMA = sample_mixture(prediction_sample_1, prediction_sample_2, ratio)
-    
-    prediction_sample_1 = prediction_sample_1[range_post,:]
-    prediction_sample_2 = prediction_sample_2[range_post,:]
-    posterior_BMA = posterior_BMA[range_post,:]
-    mse_1 = mse(y[range_post], prediction_sample_1)
-    mse_2 = mse(y[range_post], prediction_sample_2)
-    mse_bma = mse(y[range_post], posterior_BMA)
-    
-    # Printing results
-    print("#### shift: " + str(i))
-    print("Q: " + str(np.round(ratio, decimals = 2)))
-    print("evidence M1 = " + str(m1_e[-1]))
-    print("evidence M2 = " + str(m2_e[-1]))
-    print("correction factor M1 = " + str(c2[-1]))
-    print("correction factor M2 = " + str(c1[-1]))
-    print("root PMSE(M1) = " + str(np.round(np.sqrt(mse_1), decimals=2)))
-    print("root PMSE(M2) = " + str(np.round(np.sqrt(mse_2), decimals=2)))
-    print("root PMSE(BMA) = " + str(np.round(np.sqrt(mse_bma), decimals=2)))
-    print("r^2 M1: " + str(np.round(1 - mse_bma / mse_1, decimals= 3)))
-    print("r^2 M2: " + str(np.round(1 - mse_bma / mse_2, decimals= 3)))
-    
-    
-    posterior_samples["shift_" + str(i)] = {"m1":prediction_sample_1, "m2":prediction_sample_2, "bma":posterior_BMA}
-    posterior_summary["shift_" + str(i)] = {"mse1":mse_1, "mse2":mse_2, "mseBMA":mse_bma, "ratio":ratio,
-                                           "m1e":m1_e[-1], "m2e":m2_e[-1], "c1":c1[-1], "c2":c2[-1] }
-
-
-# In[17]:
-
-
-d_shared = np.array([0.2,0.4,0.6,0.8])
-thickness_c = 0.8
-thickness_l = 0.9
-grid = plt.GridSpec(2, 2, wspace=0.25, hspace=0.2)
-fig = plt.figure()
-ax = []
-shift_max = 4
-for i in range(shift_max):
-    row = (i // 2)
-    col = i % 2
-    ax.append(fig.add_subplot(grid[row,col]))
-    
-    m1 = posterior_samples["shift_" + str(i)]["m1"].mean(axis= 1)
-    m2 = posterior_samples["shift_" + str(i)]["m2"].mean(axis= 1)
-    mbma = posterior_samples["shift_" + str(i)]["bma"].mean(axis= 1)
-    l1 = ax[-1].errorbar(x[range_post], mbma, fmt='*g', ecolor='g', capthick=thickness_c, elinewidth=thickness_l, label=r'$\mathcal{M}_{BMA}$')
-    l2 = ax[-1].errorbar(x[range_post] + 0.3, m1, fmt='^r', ecolor='r', capthick=thickness_c, elinewidth=thickness_l,label=r'$\mathcal{M}_{1}$')
-    l3 = ax[-1].errorbar(x[range_post] - 0.3, m2, fmt='.k', ecolor='black', capthick=thickness_c, elinewidth=thickness_l, label=r'$\mathcal{M}_{2}$')
-    ax[-1].plot([(x[range_post] + 0.3).flatten(), (x[range_post] - 0.3).flatten()], [y[range_post],y[range_post]], 'k-', linestyle = "--", color = "black", linewidth = thickness_l)
-    ax[-1].axes.tick_params(labelsize = 10)
-    ax[-1].text(0.5, 0.9,r'$D_{shared} = $' + str(d_shared[i]), ha='center', transform=ax[-1].transAxes)
-
-
-plt.legend((l1,l2,l3),(r'$\mathcal{M}_{BMA}$', r'$\mathcal{M}_{1}$', r'$\mathcal{M}_{2}$'),loc = 'lower center', bbox_to_anchor = (0,-0,1,1),
-            bbox_transform = plt.gcf().transFigure, ncol=3)
-fig.text(0.06, 0.5, r'$\hat{y}^*$', va='center', rotation='vertical')
-fig.set_size_inches(8, 6)
-plt.savefig("Idealized_ratios.png",dpi = 200)
+np.save("corr_factor_" + name, evidence)
 
